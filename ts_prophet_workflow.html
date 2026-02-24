@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prophet 7-Day Forecast — Workflow</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #111827;
+    --surface-2: #1a2234;
+    --surface-3: #1e293b;
+    --border: #1e3a5f;
+    --text: #e2e8f0;
+    --text-dim: #8899aa;
+    --accent-blue: #38bdf8;
+    --accent-cyan: #22d3ee;
+    --accent-emerald: #34d399;
+    --accent-amber: #fbbf24;
+    --accent-rose: #fb7185;
+    --accent-violet: #a78bfa;
+
+    --stage1: #38bdf8;
+    --stage2: #a78bfa;
+    --stage3: #34d399;
+    --stage4: #fbbf24;
+    --stage5: #fb7185;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    padding: 40px 20px 80px;
+    overflow-x: hidden;
+  }
+
+  /* Subtle grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(56, 189, 248, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Header ── */
+  .header {
+    text-align: center;
+    margin-bottom: 60px;
+  }
+
+  .header-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent-cyan);
+    margin-bottom: 16px;
+    opacity: 0;
+    animation: fadeDown 0.6s ease forwards 0.2s;
+  }
+
+  .header h1 {
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1.2;
+    background: linear-gradient(135deg, #e2e8f0 0%, #38bdf8 50%, #22d3ee 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+    opacity: 0;
+    animation: fadeDown 0.6s ease forwards 0.4s;
+  }
+
+  .header p {
+    font-size: 15px;
+    color: var(--text-dim);
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+    opacity: 0;
+    animation: fadeDown 0.6s ease forwards 0.6s;
+  }
+
+  /* ── Equation bar ── */
+  .equation-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 28px;
+    text-align: center;
+    margin-bottom: 50px;
+    opacity: 0;
+    animation: fadeDown 0.6s ease forwards 0.8s;
+  }
+
+  .equation-bar .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+  }
+
+  .equation {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 18px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .eq-y { color: var(--text); }
+  .eq-g { color: var(--stage1); }
+  .eq-s { color: var(--stage2); }
+  .eq-h { color: var(--stage3); }
+  .eq-x { color: var(--stage4); }
+  .eq-e { color: var(--stage5); }
+  .eq-op { color: var(--text-dim); }
+
+  .eq-desc {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .eq-desc span { display: flex; align-items: center; gap: 5px; }
+  .eq-desc .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── Pipeline connector ── */
+  .pipeline {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .pipeline::before {
+    content: '';
+    position: absolute;
+    left: 38px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(
+      to bottom,
+      var(--stage1) 0%, var(--stage1) 18%,
+      var(--stage2) 22%, var(--stage2) 38%,
+      var(--stage3) 42%, var(--stage3) 58%,
+      var(--stage4) 62%, var(--stage4) 78%,
+      var(--stage5) 82%, var(--stage5) 100%
+    );
+    opacity: 0.4;
+  }
+
+  /* ── Stage blocks ── */
+  .stage {
+    display: grid;
+    grid-template-columns: 78px 1fr;
+    gap: 0;
+    margin-bottom: 8px;
+    opacity: 0;
+    animation: fadeIn 0.5s ease forwards;
+  }
+
+  .stage:nth-child(1) { animation-delay: 1.0s; }
+  .stage:nth-child(2) { animation-delay: 1.15s; }
+  .stage:nth-child(3) { animation-delay: 1.3s; }
+  .stage:nth-child(4) { animation-delay: 1.45s; }
+  .stage:nth-child(5) { animation-delay: 1.6s; }
+
+  /* Left: number badge */
+  .stage-marker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 24px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .stage-number {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--bg);
+    flex-shrink: 0;
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
+  }
+
+  .stage:nth-child(1) .stage-number { background: var(--stage1); box-shadow: 0 0 20px rgba(56,189,248,0.3); }
+  .stage:nth-child(2) .stage-number { background: var(--stage2); box-shadow: 0 0 20px rgba(167,139,250,0.3); }
+  .stage:nth-child(3) .stage-number { background: var(--stage3); box-shadow: 0 0 20px rgba(52,211,153,0.3); }
+  .stage:nth-child(4) .stage-number { background: var(--stage4); box-shadow: 0 0 20px rgba(251,191,36,0.3); }
+  .stage:nth-child(5) .stage-number { background: var(--stage5); box-shadow: 0 0 20px rgba(251,113,133,0.3); }
+
+  /* Right: content card */
+  .stage-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 28px 28px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .stage:nth-child(1) .stage-card:hover { border-color: rgba(56,189,248,0.3); box-shadow: 0 4px 30px rgba(56,189,248,0.08); }
+  .stage:nth-child(2) .stage-card:hover { border-color: rgba(167,139,250,0.3); box-shadow: 0 4px 30px rgba(167,139,250,0.08); }
+  .stage:nth-child(3) .stage-card:hover { border-color: rgba(52,211,153,0.3); box-shadow: 0 4px 30px rgba(52,211,153,0.08); }
+  .stage:nth-child(4) .stage-card:hover { border-color: rgba(251,191,36,0.3); box-shadow: 0 4px 30px rgba(251,191,36,0.08); }
+  .stage:nth-child(5) .stage-card:hover { border-color: rgba(251,113,133,0.3); box-shadow: 0 4px 30px rgba(251,113,133,0.08); }
+
+  .stage-title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+
+  .stage:nth-child(1) .stage-title { color: var(--stage1); }
+  .stage:nth-child(2) .stage-title { color: var(--stage2); }
+  .stage:nth-child(3) .stage-title { color: var(--stage3); }
+  .stage:nth-child(4) .stage-title { color: var(--stage4); }
+  .stage:nth-child(5) .stage-title { color: var(--stage5); }
+
+  .stage-subtitle {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 18px;
+  }
+
+  /* Steps grid */
+  .steps {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface-2);
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.45;
+    transition: background 0.2s ease;
+  }
+
+  .step:hover { background: var(--surface-3); }
+
+  .step-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    margin-top: 1px;
+    opacity: 0.8;
+  }
+
+  .stage:nth-child(1) .step-icon { background: rgba(56,189,248,0.15); color: var(--stage1); }
+  .stage:nth-child(2) .step-icon { background: rgba(167,139,250,0.15); color: var(--stage2); }
+  .stage:nth-child(3) .step-icon { background: rgba(52,211,153,0.15); color: var(--stage3); }
+  .stage:nth-child(4) .step-icon { background: rgba(251,191,36,0.15); color: var(--stage4); }
+  .stage:nth-child(5) .step-icon { background: rgba(251,113,133,0.15); color: var(--stage5); }
+
+  .step-text { color: var(--text); }
+  .step-text .dim { color: var(--text-dim); font-size: 11px; }
+
+  /* Full-width steps */
+  .step.full { grid-column: 1 / -1; }
+
+  /* Decision callout */
+  .decision {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(251,191,36,0.06);
+    border: 1px solid rgba(251,191,36,0.15);
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--accent-amber);
+  }
+
+  .decision-icon { flex-shrink: 0; font-size: 14px; margin-top: 1px; }
+
+  /* Arrow connectors between stages */
+  .connector {
+    display: flex;
+    justify-content: center;
+    padding: 0 0 0 78px;
+    height: 8px;
+  }
+
+  .connector-arrow {
+    width: 2px;
+    height: 100%;
+    opacity: 0.2;
+  }
+
+  /* ── Output section ── */
+  .output-bar {
+    margin-top: 40px;
+    display: grid;
+    grid-template-columns: 78px 1fr;
+    opacity: 0;
+    animation: fadeIn 0.5s ease forwards 1.8s;
+  }
+
+  .output-marker {
+    display: flex;
+    justify-content: center;
+    padding-top: 18px;
+  }
+
+  .output-diamond {
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-emerald));
+    transform: rotate(45deg);
+    border-radius: 4px;
+    box-shadow: 0 0 20px rgba(34,211,238,0.25);
+  }
+
+  .output-card {
+    background: linear-gradient(135deg, rgba(34,211,238,0.08), rgba(52,211,153,0.08));
+    border: 1px solid rgba(34,211,238,0.25);
+    border-radius: 14px;
+    padding: 22px 28px;
+  }
+
+  .output-title {
+    font-size: 16px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-emerald));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 14px;
+  }
+
+  .output-items {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .output-chip {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 14px;
+    background: rgba(34,211,238,0.08);
+    border: 1px solid rgba(34,211,238,0.15);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  .output-chip .icon { font-size: 14px; }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center;
+    margin-top: 50px;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 1px;
+    opacity: 0;
+    animation: fadeIn 0.5s ease forwards 2.0s;
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 768px) {
+    .header h1 { font-size: 26px; }
+    .equation { font-size: 14px; }
+    .steps { grid-template-columns: 1fr; }
+    .stage { grid-template-columns: 50px 1fr; }
+    .pipeline::before { left: 24px; }
+    .stage-card { padding: 18px 16px 20px; }
+    .output-bar { grid-template-columns: 50px 1fr; }
+    .output-items { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-label">End-to-End Workflow</div>
+      <h1>Prophet 7-Day Call Volume Forecast</h1>
+      <p>Contact centre workforce planning pipeline — from raw daily call data through Prophet modelling to Erlang C staffing output</p>
+    </div>
+
+    <!-- Equation -->
+    <div class="equation-bar">
+      <div class="label">Prophet Decomposition Model</div>
+      <div class="equation">
+        <span class="eq-y">y(t)</span>
+        <span class="eq-op">=</span>
+        <span class="eq-g">g(t)</span>
+        <span class="eq-op">+</span>
+        <span class="eq-s">s(t)</span>
+        <span class="eq-op">+</span>
+        <span class="eq-h">h(t)</span>
+        <span class="eq-op">+</span>
+        <span class="eq-x">x(t)</span>
+        <span class="eq-op">+</span>
+        <span class="eq-e">ε(t)</span>
+      </div>
+      <div class="eq-desc">
+        <span><span class="dot" style="background:var(--stage1)"></span>trend</span>
+        <span><span class="dot" style="background:var(--stage2)"></span>seasonality</span>
+        <span><span class="dot" style="background:var(--stage3)"></span>holidays</span>
+        <span><span class="dot" style="background:var(--stage4)"></span>regressors</span>
+        <span><span class="dot" style="background:var(--stage5)"></span>noise</span>
+      </div>
+    </div>
+
+    <!-- Pipeline -->
+    <div class="pipeline">
+
+      <!-- STAGE 1: EXPLORE -->
+      <div class="stage">
+        <div class="stage-marker"><div class="stage-number">1</div></div>
+        <div class="stage-card">
+          <div class="stage-title">EXPLORE</div>
+          <div class="stage-subtitle">Understand the data before modelling it</div>
+          <div class="steps">
+            <div class="step">
+              <div class="step-icon">📈</div>
+              <div class="step-text">Plot full history<br><span class="dim">Trend, anomalies, structural breaks</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">📅</div>
+              <div class="step-text">Day-of-week box plots<br><span class="dim">Mon peak → Sun trough profile</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">🔄</div>
+              <div class="step-text">MSTL decomposition<br><span class="dim">periods = [7, 365] for weekly + annual</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">📊</div>
+              <div class="step-text">ACF / PACF<br><span class="dim">Confirm lag-7 dominance</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">🧪</div>
+              <div class="step-text">Stationarity tests<br><span class="dim">ADF + KPSS (informational for Prophet)</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">📋</div>
+              <div class="step-text">Monthly / annual patterns<br><span class="dim">Year-over-year overlay, seasonal plot</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAGE 2: PREPROCESS -->
+      <div class="stage">
+        <div class="stage-marker"><div class="stage-number">2</div></div>
+        <div class="stage-card">
+          <div class="stage-title">PREPROCESS</div>
+          <div class="stage-subtitle">Shape the data for Prophet's expected format</div>
+          <div class="steps">
+            <div class="step">
+              <div class="step-icon">🏷️</div>
+              <div class="step-text">Create Prophet df<br><span class="dim">Rename to ds / y columns</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">🕳️</div>
+              <div class="step-text">Handle missing days<br><span class="dim">Interpolate gaps, ensure continuous index</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">⚡</div>
+              <div class="step-text">Outlier treatment<br><span class="dim">IQR by day-of-week → set to NaN</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">🎄</div>
+              <div class="step-text">Holiday DataFrame<br><span class="dim">Irish bank hols + lower/upper windows</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">🏦</div>
+              <div class="step-text">Banking regressors<br><span class="dim">Direct debit, payday, weekend, tax season</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">✂️</div>
+              <div class="step-text">Train / test split<br><span class="dim">Hold out 8 weeks (56 days)</span></div>
+            </div>
+            <div class="decision">
+              <div class="decision-icon">⚠️</div>
+              <div>Key decision: <strong>additive vs multiplicative</strong> seasonality — check if seasonal amplitude scales with level (use STL residuals from Stage 1)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAGE 3: MODEL -->
+      <div class="stage">
+        <div class="stage-marker"><div class="stage-number">3</div></div>
+        <div class="stage-card">
+          <div class="stage-title">MODEL</div>
+          <div class="stage-subtitle">Fit Prophet and generate the 7-day forecast</div>
+          <div class="steps">
+            <div class="step">
+              <div class="step-icon">📏</div>
+              <div class="step-text">Seasonal naïve baseline<br><span class="dim">Same day last week — the bar to beat</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">⚙️</div>
+              <div class="step-text">Configure Prophet<br><span class="dim">growth, priors, seasonality mode</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">➕</div>
+              <div class="step-text">Add regressors<br><span class="dim">add_regressor() with prior_scale per feature</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">🔧</div>
+              <div class="step-text">Fit &amp; inspect components<br><span class="dim">plot_components() — does each make sense?</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">📍</div>
+              <div class="step-text">Check changepoints<br><span class="dim">Dates + magnitudes — align to known events?</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">🎯</div>
+              <div class="step-text">Generate 7-day forecast<br><span class="dim">make_future_dataframe → predict → clip ≥ 0</span></div>
+            </div>
+            <div class="decision">
+              <div class="decision-icon">⚠️</div>
+              <div>Critical: future regressors must be <strong>populated with known values</strong> — calendar features are deterministic, campaign flags must come from marketing</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAGE 4: DIAGNOSE -->
+      <div class="stage">
+        <div class="stage-marker"><div class="stage-number">4</div></div>
+        <div class="stage-card">
+          <div class="stage-title">DIAGNOSE</div>
+          <div class="stage-subtitle">Validate the model before trusting its output</div>
+          <div class="steps">
+            <div class="step">
+              <div class="step-icon">📉</div>
+              <div class="step-text">Residual analysis (6 plots)<br><span class="dim">Time plot, histogram, QQ, ACF, by-DoW, vs fitted</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">🔔</div>
+              <div class="step-text">Ljung-Box test<br><span class="dim">p &gt; 0.05 at lags 7, 14, 21, 28</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">🔁</div>
+              <div class="step-text">Prophet cross-validation<br><span class="dim">initial=730d, period=7d, horizon=7d</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">📅</div>
+              <div class="step-text">MAPE by day-of-week<br><span class="dim">Monday typically worst — bias check</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">📐</div>
+              <div class="step-text">MAPE by horizon<br><span class="dim">Should be stable across days 1–7</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">🎯</div>
+              <div class="step-text">Prediction interval calibration<br><span class="dim">Empirical coverage ≈ 80% target</span></div>
+            </div>
+            <div class="decision">
+              <div class="decision-icon">⚠️</div>
+              <div>Prophet limitation: <strong>no autocorrelation modelling</strong> — Ljung-Box may fail. Accept it (modest impact at h=7) or post-process residuals with AR(1)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STAGE 5: DEPLOY & MONITOR -->
+      <div class="stage">
+        <div class="stage-marker"><div class="stage-number">5</div></div>
+        <div class="stage-card">
+          <div class="stage-title">DEPLOY &amp; MONITOR</div>
+          <div class="stage-subtitle">Production pipeline with safety nets</div>
+          <div class="steps">
+            <div class="step">
+              <div class="step-icon">🔍</div>
+              <div class="step-text">Hyperparameter tuning<br><span class="dim">Grid search via cross-validation</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">🏭</div>
+              <div class="step-text">Production script<br><span class="dim">Monday 06:45 — ETL → QC → fit → forecast</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">✅</div>
+              <div class="step-text">Sanity checks<br><span class="dim">Forecast within 50% of 90-day avg, not flat</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">📊</div>
+              <div class="step-text">Weekly accuracy report<br><span class="dim">MAE, MAPE, bias, coverage per week</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">🚨</div>
+              <div class="step-text">Drift detection<br><span class="dim">Rolling MAPE &gt; 12% → auto retrain trigger</span></div>
+            </div>
+            <div class="step">
+              <div class="step-icon">🔄</div>
+              <div class="step-text">3-level fallback<br><span class="dim">Tuned → Simple Prophet → 4-wk naïve avg</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Output -->
+    <div class="output-bar">
+      <div class="output-marker"><div class="output-diamond"></div></div>
+      <div class="output-card">
+        <div class="output-title">OUTPUT → Workforce Planning</div>
+        <div class="output-items">
+          <div class="output-chip"><span class="icon">📋</span> 7-day point forecast + 80% PI</div>
+          <div class="output-chip"><span class="icon">👥</span> Erlang C → agents per interval</div>
+          <div class="output-chip"><span class="icon">📅</span> Scheduled headcount (with shrinkage)</div>
+          <div class="output-chip"><span class="icon">📊</span> Accuracy report for planner review</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">Prophet Case Study — Contact Centre Forecasting Workflow — Feb 2026</div>
+  </div>
+</body>
+</html>
